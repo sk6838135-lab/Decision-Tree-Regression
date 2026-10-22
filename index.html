@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Tree Regression | Machine Learning Blog</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --purple: #9270d8;
+  --dark: #39285f;
+  --light: #f1ebff;
+  --text: #514866;
+  --border: #e4dcf5;
+  --green: #32836a;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #faf9ff;
+  color: var(--text);
+  line-height: 1.7;
+}
+header {
+  background: linear-gradient(135deg, #39285f, #9270d8);
+  color: white;
+  text-align: center;
+  padding: 65px 20px;
+}
+header .tag {
+  border: 1px solid #ffffff88;
+  padding: 5px 13px;
+  border-radius: 25px;
+  font-size: 13px;
+}
+header h1 { font-size: clamp(30px, 5vw, 46px); margin: 20px 0 10px; }
+header p { max-width: 760px; margin: auto; color: #f2eaff; }
+nav {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  padding: 13px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+nav a {
+  text-decoration: none;
+  color: var(--dark);
+  font-size: 13px;
+  font-weight: bold;
+  margin: 0 8px;
+}
+nav a:hover { color: var(--purple); }
+.container { max-width: 1050px; margin: auto; padding: 25px 20px 60px; }
+section {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 26px;
+  margin: 24px 0;
+  box-shadow: 0 5px 20px #39285f08;
+}
+h2 { color: var(--dark); font-size: 25px; margin-top: 0; }
+h3 { color: var(--dark); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+  margin: 18px 0;
+}
+.stat { background: var(--light); padding: 17px; border-radius: 12px; }
+.stat strong { display: block; color: var(--dark); font-size: 25px; }
+.stat span { font-size: 13px; }
+.formula {
+  background: #f6f1ff;
+  border-left: 4px solid var(--purple);
+  padding: 14px;
+  margin: 12px 0;
+  border-radius: 5px;
+}
+table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+th { background: var(--light); color: var(--dark); }
+tr:nth-child(even) { background: #fcfbff; }
+.chartbox { max-width: 850px; height: 330px; margin: 20px auto; }
+pre {
+  background: #211b32;
+  color: #eee7ff;
+  padding: 20px;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.note {
+  border-left: 4px solid var(--green);
+  background: #effaf5;
+  padding: 13px 16px;
+  border-radius: 5px;
+}
+.predictor {
+  background: #fbf9ff;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 22px;
+}
+.field { margin: 19px 0; }
+.field label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: bold;
+  color: var(--dark);
+}
+.field input[type=range] { width: 100%; accent-color: var(--purple); margin-top: 12px; }
+.field small { color: #716785; }
+button {
+  border: 0;
+  background: var(--purple);
+  color: white;
+  font-weight: bold;
+  padding: 12px 19px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+}
+button:hover { background: var(--dark); }
+.result {
+  display: none;
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--light);
+  border-radius: 12px;
+}
+.result .score { font-size: 40px; color: var(--dark); font-weight: bold; }
+.tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 20px 5px;
+  overflow-x: auto;
+}
+.node {
+  background: var(--light);
+  color: var(--dark);
+  border: 1px solid #cdbcf1;
+  padding: 10px 15px;
+  border-radius: 9px;
+  text-align: center;
+  font-weight: bold;
+  min-width: 160px;
+}
+.node.leaf { background: #effaf5; border-color: #a9d7c5; }
+.branch { display: flex; justify-content: center; gap: 20px; width: 100%; }
+.branchcol { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+.branchlabel { font-size: 12px; color: var(--purple); font-weight: bold; }
+footer { background: var(--dark); color: white; text-align: center; padding: 28px 15px; }
+footer p { color: #e5dafa; margin: 5px; }
+a { color: var(--purple); }
+@media(max-width:600px) {
+  nav { position: static; line-height: 2.2; }
+  section { padding: 19px; }
+  table { font-size: 12px; }
+  th, td { padding: 7px; }
+  .chartbox { height: 280px; }
+  .branch { gap: 6px; }
+  .node { min-width: 110px; padding: 8px 5px; font-size: 12px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <span class="tag">MACHINE LEARNING · REGRESSION</span>
+  <h1>Decision Tree Regression</h1>
+  <p>Predicting student exam scores using study hours with machine learning.</p>
+</header>
+
+<nav>
+  <a href="#intro">Introduction</a>
+  <a href="#working">Working</a>
+  <a href="#dataset">Dataset</a>
+  <a href="#predictor">Try Prediction</a>
+  <a href="#graphs">Graphs</a>
+  <a href="#formula">Formula</a>
+  <a href="#python">Python Code</a>
+  <a href="#applications">Applications</a>
+  <a href="#conclusion">Conclusion</a>
+</nav>
+
+<main class="container">
+
+<section id="intro">
+  <h2>1. Introduction</h2>
+  <p>
+    Decision Tree Regression is a supervised machine learning technique used
+    to predict continuous numerical values. It learns decision rules from
+    input data and uses them to estimate an output.
+  </p>
+  <p>
+    In this project, we predict a student's exam marks based on the number
+    of hours studied per day. Users can enter their own study hours in the
+    interactive calculator to see an example prediction.
+  </p>
+  <div class="grid">
+    <div class="stat"><strong>Supervised</strong><span>Machine learning method</span></div>
+    <div class="stat"><strong>Regression</strong><span>Predicts numerical values</span></div>
+    <div class="stat"><strong>Decision Rules</strong><span>Splits data into groups</span></div>
+  </div>
+</section>
+
+<section id="working">
+  <h2>2. Description and Working</h2>
+  <p>
+    A decision tree divides a dataset into smaller groups using rules based
+    on input features. The starting point is called the root node, each
+    decision is a split, and the final outcomes are called leaf nodes.
+  </p>
+  <h3>Steps involved</h3>
+  <ol>
+    <li>Collect data containing study hours and exam marks.</li>
+    <li>Select study hours as the input and marks as the target.</li>
+    <li>Train the Decision Tree Regression model.</li>
+    <li>Enter a new study-hour value.</li>
+    <li>Use the model to predict the estimated marks.</li>
+    <li>Visualize the data and evaluate prediction errors.</li>
+  </ol>
+
+  <h3>Illustrative decision tree</h3>
+  <p>This simplified diagram explains the idea of splitting data into groups. It is not the exact tree learned by the Python model.</p>
+  <div class="tree">
+    <div class="node">Study Hours ≥ 3?</div>
+    <div class="branch">
+      <div class="branchcol">
+        <div class="branchlabel">NO</div>
+        <div class="node leaf">Lower score group</div>
+      </div>
+      <div class="branchcol">
+        <div class="branchlabel">YES</div>
+        <div class="node leaf">Higher score group</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="dataset">
+  <h2>3. Dataset Overview</h2>
+  <p>
+    The following illustrative dataset contains study hours and corresponding
+    exam marks. It is used to demonstrate how a model learns the relationship
+    between an input and a numerical target.
+  </p>
+  <div class="grid">
+    <div class="stat"><strong>6</strong><span>Sample records</span></div>
+    <div class="stat"><strong>1</strong><span>Input feature</span></div>
+    <div class="stat"><strong>Marks</strong><span>Prediction target</span></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Student</th><th>Study Hours</th><th>Exam Marks</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>S1</td><td>1</td><td>40</td></tr>
+      <tr><td>S2</td><td>2</td><td>50</td></tr>
+      <tr><td>S3</td><td>3</td><td>60</td></tr>
+      <tr><td>S4</td><td>4</td><td>70</td></tr>
+      <tr><td>S5</td><td>5</td><td>80</td></tr>
+      <tr><td>S6</td><td>6</td><td>90</td></tr>
+    </tbody>
+  </table>
+  <p class="note">
+    These are example values created for learning. They do not represent
+    real students or prove that study hours alone determine exam performance.
+  </p>
+</section>
+
+<section id="predictor">
+  <h2>4. Try the Prediction Model</h2>
+  <p>
+    Select the number of hours studied and click <strong>Predict Marks</strong>.
+    This browser calculator uses the same six sample records and a simplified
+    set of decision-tree-style rules to demonstrate prediction.
+  </p>
+
+  <div class="predictor">
+    <div class="field">
+      <label for="hours">Study hours per day <span id="hoursValue">4 hours</span></label>
+      <input id="hours" type="range" min="0" max="10" step="0.5" value="4">
+      <small>Choose a value between 0 and 10 hours.</small>
+    </div>
+
+    <button onclick="predictScore()">Predict Marks</button>
+    <button onclick="resetInputs()" style="background:#716785;margin-left:7px">Reset</button>
+
+    <div class="result" id="result" aria-live="polite">
+      <div>Illustrative predicted marks</div>
+      <div class="score" id="score">70 / 100</div>
+      <p id="explanation"></p>
+      <p><strong>Decision rule:</strong> <span id="path"></span></p>
+      <small>This browser calculator is a demonstration, not a trained model running in your browser.</small>
+    </div>
+  </div>
+</section>
+
+<section id="graphs">
+  <h2>5. Data Visualization</h2>
+  <h3>Study Hours vs Exam Marks</h3>
+  <p>
+    This scatter chart shows the sample relationship between study hours and
+    marks. The second chart displays the predictions from the simplified
+    browser demonstration.
+  </p>
+  <div class="chartbox"><canvas id="studyChart"></canvas></div>
+
+  <h3>Illustrative Actual vs Predicted Marks</h3>
+  <div class="chartbox"><canvas id="compareChart"></canvas></div>
+  <p class="note">
+    The comparison chart uses illustrative prediction values. The Python
+    code below makes predictions with a trained model.
+  </p>
+</section>
+
+<section id="formula">
+  <h2>6. Important Formula</h2>
+  <h3>Mean Squared Error (MSE)</h3>
+  <p>MSE measures the average squared difference between actual and predicted marks.</p>
+  <div class="formula">MSE = (1/n) × Σ(yᵢ − ŷᵢ)²</div>
+  <ul>
+    <li><strong>n:</strong> Number of observations.</li>
+    <li><strong>yᵢ:</strong> Actual marks.</li>
+    <li><strong>ŷᵢ:</strong> Predicted marks.</li>
+  </ul>
+
+  <h3>Mean Absolute Error (MAE)</h3>
+  <div class="formula">MAE = (1/n) × Σ|yᵢ − ŷᵢ|</div>
+  <p>
+    Lower MAE and MSE values generally indicate smaller errors on the
+    evaluation data. A decision tree regression model selects splits to
+    reduce variation in the target values within its groups.
+  </p>
+</section>
+
+<section id="python">
+  <h2>7. Simple Python Implementation</h2>
+  <p>
+    This short program trains a Decision Tree Regression model, accepts
+    study hours from the user, predicts marks, and displays a graph.
+  </p>
+
+  <h3>Install the libraries</h3>
+  <pre>pip install pandas matplotlib scikit-learn</pre>
+
+  <h3>Python code</h3>
+  <pre>import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeRegressor
+
+# Dataset
+data = {
+    'Hours': [1, 2, 3, 4, 5, 6],
+    'Marks': [40, 50, 60, 70, 80, 90]
+}
+
+df = pd.DataFrame(data)
+
+# Input and output
+X = df[['Hours']]
+y = df['Marks']
+
+# Train the model
+model = DecisionTreeRegressor(random_state=0)
+model.fit(X, y)
+
+# Predict marks
+hours = float(input("Enter study hours: "))
+new_data = pd.DataFrame({'Hours': [hours]})
+prediction = model.predict(new_data)
+
+print("Predicted Marks:", round(prediction[0], 2))
+
+# Display graph
+plt.scatter(X['Hours'], y, label="Actual Marks")
+plt.step(
+    X['Hours'],
+    model.predict(X),
+    where='mid',
+    color='red',
+    label="Decision Tree"
+)
+plt.xlabel("Study Hours")
+plt.ylabel("Marks")
+plt.title("Decision Tree Regression")
+plt.legend()
+plt.show()</pre>
+
+  <h3>Example output</h3>
+  <pre>Enter study hours: 4
+Predicted Marks: 70.0</pre>
+
+  <p class="note">
+    Decision trees predict using learned splits. Their prediction graphs
+    are step-like, rather than straight lines. This tiny dataset is for
+    practice and is not suitable for real exam-score predictions.
+  </p>
+</section>
+
+<section id="applications">
+  <h2>8. Real-World Applications</h2>
+  <div class="grid">
+    <div class="stat"><strong>Education</strong><span>Explore academic performance patterns.</span></div>
+    <div class="stat"><strong>Real Estate</strong><span>Estimate property prices.</span></div>
+    <div class="stat"><strong>Business</strong><span>Predict sales using historical data.</span></div>
+    <div class="stat"><strong>Finance</strong><span>Estimate numerical outcomes from suitable data.</span></div>
+  </div>
+
+  <h3>Advantages</h3>
+  <ul>
+    <li>Easy to understand and visualize.</li>
+    <li>Can learn non-linear patterns.</li>
+    <li>Usually does not require feature scaling.</li>
+  </ul>
+
+  <h3>Limitations</h3>
+  <ul>
+    <li>Small changes in training data may change the tree.</li>
+    <li>Deep trees may overfit the training data.</li>
+    <li>Predictions depend on data quality.</li>
+  </ul>
+</section>
+
+<section id="conclusion">
+  <h2>9. Conclusion</h2>
+  <p>
+    Decision Tree Regression is a supervised machine learning technique
+    that predicts numerical values by dividing data into groups using
+    decision rules. In this project, study hours are used to predict
+    illustrative exam marks.
+  </p>
+  <p>
+    The interactive calculator demonstrates how a prediction can change
+    when the input changes. The Python implementation trains an actual
+    DecisionTreeRegressor using scikit-learn and produces a prediction
+    and graph.
+  </p>
+  <p><strong>Learning outcome:</strong> Understand the dataset, model training, prediction, and visualization in Decision Tree Regression.</p>
+</section>
+
+<section id="references">
+  <h2>10. References</h2>
+  <ul>
+    <li><a href="https://scikit-learn.org/stable/modules/tree.html" target="_blank" rel="noopener">Scikit-learn Decision Trees</a></li>
+    <li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html" target="_blank" rel="noopener">DecisionTreeRegressor Documentation</a></li>
+    <li><a href="https://pandas.pydata.org/docs/" target="_blank" rel="noopener">Pandas Documentation</a></li>
+    <li><a href="https://matplotlib.org/stable/" target="_blank" rel="noopener">Matplotlib Documentation</a></li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <h3 style="color:white;margin:0">Decision Tree Regression</h3>
+  <p>Machine Learning Practical Blog</p>
+  <p>Interactive Prediction Demonstration</p>
+</footer>
+
+<script>
+// Interactive browser demonstration using simple fixed rules
+const hours = document.getElementById('hours');
+
+function updateLabel() {
+  document.getElementById('hoursValue').textContent = hours.value + ' hours';
+}
+hours.addEventListener('input', updateLabel);
+
+function predictScore() {
+  const h = Number(hours.value);
+  let score, path;
+
+  if (h < 3) {
+    score = 40 + (h - 1) * 10;
+    path = 'Study hours < 3: lower score group';
+  } else {
+    score = 60 + (h - 3) * 10;
+    path = 'Study hours ≥ 3: higher score group';
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  document.getElementById('score').textContent = score.toFixed(1) + ' / 100';
+  document.getElementById('explanation').textContent =
+    'For ' + h + ' study hours per day, the example calculator estimates ' +
+    score.toFixed(1) + ' marks.';
+  document.getElementById('path').textContent = path;
+  document.getElementById('result').style.display = 'block';
+}
+
+function resetInputs() {
+  hours.value = 4;
+  updateLabel();
+  document.getElementById('result').style.display = 'none';
+}
+updateLabel();
+
+// Sample dataset graph
+new Chart(document.getElementById('studyChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: 'Actual sample marks',
+      data: [
+        {x:1,y:40},{x:2,y:50},{x:3,y:60},
+        {x:4,y:70},{x:5,y:80},{x:6,y:90}
+      ],
+      backgroundColor: '#9270d8',
+      pointRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: { title: { display: true, text: 'Study Hours' } },
+      y: { title: { display: true, text: 'Exam Marks' }, min: 0, max: 100 }
+    }
+  }
+});
+
+// Illustrative comparison chart
+new Chart(document.getElementById('compareChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Student 1', 'Student 2', 'Student 3', 'Student 4', 'Student 5'],
+    datasets: [
+      {
+        label: 'Actual Marks',
+        data: [40, 50, 70, 80, 90],
+        backgroundColor: '#b5a0e8'
+      },
+      {
+        label: 'Illustrative Predicted Marks',
+        data: [40, 50, 60, 80, 90],
+        backgroundColor: '#39285f'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: { display: true, text: 'Marks' }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
